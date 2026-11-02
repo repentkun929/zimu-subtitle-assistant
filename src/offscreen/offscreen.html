@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>字幕助手 · 标签页音频采集</title>
+</head>
+<body>
+  <!--
+    离屏文档（offscreen document）。
+
+    为什么必须有它：chrome.tabCapture 拿到的 streamId 只能交给扩展自己的页面去
+    消费，不能直接给网页里的内容脚本。这是 Chrome 的硬性要求，官方示例也是这么做的
+    （见 Google 的 sample.tabcapture-recorder）。
+
+    本页面只做一件事：把 streamId 换成真正的 MediaStream，然后交回给调用方。
+    这里不录音、不做识别，保持职责单一。
+  -->
+  <script src="offscreen.js"></script>
+</body>
+</html>

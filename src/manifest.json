@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "网络课程字幕助手",
+  "version": "0.2.0",
+  "description": "给任意网页里的教学视频实时生成中文字幕：本地 Whisper 或云端语音识别，字幕叠加在播放器上，可导出 SRT。",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "storage",
+    "tabCapture",
+    "offscreen",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "网络课程字幕助手",
+    "default_popup": "popup/popup.html"
+  },
+  "options_ui": {
+    "page": "popup/popup.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content/transcript.js",
+        "content/capture.js",
+        "content/audio-source.js",
+        "content/overlay.js",
+        "content/subtitles.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_about_blank": false
+    }
+  ]
+}

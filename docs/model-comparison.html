@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>字幕识别模型选型对照 · 中文课堂</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --fg: #14181f;
+    --muted: #5f6b7a;
+    --line: #e3e7ec;
+    --accent: #2f6feb;
+    --good: #12805c;
+    --warn: #b45309;
+    --bad: #c0392b;
+    --bar: #2f6feb;
+    --bar-bg: #eaeef5;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 6px 18px rgba(16,24,40,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c;
+      --card: #1c2027;
+      --fg: #e8ecf2;
+      --muted: #98a3b2;
+      --line: #2c333d;
+      --bar-bg: #262d37;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 28px 20px 56px;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.65 "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: .2px; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 13px; }
+  h2 { font-size: 16px; margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 99px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    margin-left: 8px;
+    vertical-align: 2px;
+  }
+  .tag.best { color: #fff; background: var(--good); border-color: var(--good); }
+  .tag.avoid { color: #fff; background: var(--bad); border-color: var(--bad); }
+  /* 误差率条形图：越短越好 */
+  .row { display: grid; grid-template-columns: 190px 1fr 74px; align-items: center; gap: 12px; margin: 9px 0; }
+  .name { font-size: 13px; }
+  .name small { display: block; color: var(--muted); font-size: 11px; line-height: 1.4; }
+  .track { background: var(--bar-bg); border-radius: 5px; height: 20px; overflow: hidden; }
+  .fill { height: 100%; background: var(--bar); border-radius: 5px; }
+  .fill.dim { background: #8fa6cc; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); }
+  .legend { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  tr:last-child td { border-bottom: none; }
+  code { background: rgba(128,128,128,.16); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .note {
+    border-left: 3px solid var(--warn);
+    background: color-mix(in srgb, var(--warn) 8%, transparent);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  .note.good { border-left-color: var(--good); background: color-mix(in srgb, var(--good) 8%, transparent); }
+  .note b { color: var(--fg); }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  li { margin: 3px 0; }
+  .ok { color: var(--good); font-weight: 600; }
+  .no { color: var(--bad); font-weight: 600; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>识别模型选型对照</h1>
+  <p class="sub">针对「中文教学视频实时字幕」这个场景。左栏是中文识别误差率，<b>越短越准</b>。</p>
+
+  <h2>中文识别误差率（CER，越低越好）</h2>
+  <div class="card">
+    <div class="row">
+      <div class="name">Qwen3-ASR-1.7B<small>阿里 · 1.7B</small></div>
+      <div class="track"><div class="fill" style="width:29%"></div></div>
+      <div class="num">1.58%</div>
+    </div>
+    <div class="row">
+      <div class="name">XingChenASR-V3.2<small>中国电信 · 工业级</small></div>
+      <div class="track"><div class="fill" style="width:50%"></div></div>
+      <div class="num">≈2.75%</div>
+    </div>
+    <div class="row">
+      <div class="name">SenseVoice-Small<small>阿里 · 234M（<b>你原来用的</b>）</small></div>
+      <div class="track"><div class="fill dim" style="width:55%"></div></div>
+      <div class="num">≈3.0%</div>
+    </div>
+    <div class="row">
+      <div class="name">Whisper-large-v3<small>OpenAI · 1.55B</small></div>
+      <div class="track"><div class="fill dim" style="width:94%"></div></div>
+      <div class="num">5.14%</div>
+    </div>
+    <p class="legend">
+      数值来自公开基准（AISHELL-1 为主，XingChen 用官方 AIShell2 字准 97.25% 反推），
+      各家测试口径不完全一致，看相对量级即可。
+      <b>SenseVoiceSmall → Qwen3-ASR-1.7B 大约能把错字减半。</b>
+    </p>
+  </div>
+
+  <h2>逐个点评</h2>
+
+  <div class="card">
+    <b>Qwen3-ASR-1.7B</b><span class="tag best">首推</span>
+    <ul>
+      <li class="ok">中文误差率最低，课堂这种快语速 + 专业术语的场景优势最明显</li>
+      <li class="ok">支持长音频一次转写，也支持时间戳（对面接扩展是加分）</li>
+      <li class="ok">硅基流动把它标价<b>免费</b>；接口就是老的 <code>/audio/transcriptions</code>，换个下拉框即可</li>
+      <li>中英混说不用手动切语言</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <b>XingChenASR-V3.2 / V3.2-Ultra</b><span class="tag">方言场景才换</span>
+    <ul>
+      <li class="ok">中英 + 60 种方言混说，普通话朗读字准 97.25%，工业级打磨</li>
+      <li class="no">卖点是「高可读语义转写」——会自动删口头禅、理顺语序。
+        这对<b>字幕恰恰是缺点</b>：字幕应当尽量忠实原话，被“规整”掉的部分在观众看来就是<b>漏字</b></li>
+      <li>结论：讲师口音重或讲方言时值得换，普通普通话课堂不必</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <b>XingChenGSR-V1.0（生成式 ASR）</b><span class="tag avoid">做字幕请避开</span>
+    <ul>
+      <li class="no">它会用大模型对识别结果做语义改写，输出的是「整理过的文本」而不是原话</li>
+      <li>适合做会议纪要、摘要；<b>不适合做逐字字幕</b></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <b>SenseVoiceSmall</b><span class="tag">原默认</span>
+    <ul>
+      <li class="ok">免费、极快、资源占用小</li>
+      <li class="no">只有 234M，而且是<b>非自回归模型、不利用上下文</b>——
+        每段音频独立识别，前面说的话帮不到后面。这就是「数据机 / 是他过他你」这类错字的来源</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <b>fnlp/MOSS-TTSD-v0.5 · FunAudioLLM/CosyVoice2</b><span class="tag avoid">不是识别模型</span>
+    <ul>
+      <li class="no">这两个是 <b>TTS（文字转语音）</b>，方向正好相反，做字幕用不上</li>
+    </ul>
+  </div>
+
+  <h2>阿里云百炼 vs 硅基流动</h2>
+  <table>
+    <tr><th>平台</th><th>模型</th><th>调用协议</th><th>价格</th></tr>
+    <tr>
+      <td>硅基流动</td><td><code>Qwen/Qwen3-ASR-1.7B</code></td>
+      <td><code>/audio/transcriptions</code>（上传文件）</td><td>免费</td>
+    </tr>
+    <tr>
+      <td>阿里云百炼</td><td><code>qwen3-asr-flash</code></td>
+      <td><code>/chat/completions</code>（音频放进 messages）</td><td>新号 10 小时免费额度</td>
+    </tr>
+  </table>
+  <p class="legend">
+    两者其实同源（都出自 Qwen3-ASR 家族），选哪个看你手上有哪家的账号。
+    注意<b>协议不一样</b>：百炼没有 <code>/audio/transcriptions</code> 这个口子，
+    填错会得到一个很干净的 404 —— 插件的设置面板会把实际请求地址显示出来，方便对照。
+  </p>
+
+  <div class="note">
+    <b>一个必须说清楚的事：换模型解决的是「准不准」，不是「快不快」。</b><br />
+    字幕延迟 ≈ 分块秒数 + 服务端排队耗时，跟你用多准的模型没有关系。
+    换模型之后，字幕该慢几秒还是慢几秒。<br />
+    想要「几乎同步」，只有一条路：<b>进页面时先把整段音频拿下来、提前转写</b>，
+    播放时按时间查表显示。方案见 <code>docs/roadmap.md</code> 的 P0.5。
+  </div>
+
+  <div class="note good">
+    <b>另外，你这次反馈的「错字漏字」其实主要不是模型的问题。</b><br />
+    日志里「已退回分块模式」之后，每一块仍是 <code>音频 1.6s</code> ——
+    采集窗口的长度是开始录音前定死的（流式用 1.6 秒），降级时只改了标志位、没改窗口。
+    结果是一句话被反复从中间切断送识别，模型看不到完整上下文。这一处已经修好了。
+  </div>
+
+  <h2>怎么切换</h2>
+  <div class="card">
+    <ul>
+      <li>点浏览器工具栏的插件图标 → 展开设置面板</li>
+      <li>供应商选「<b>硅基流动 · Qwen3-ASR-1.7B（首推：中文最准，免费）</b>」</li>
+      <li>粘贴你的 API Key（<a href="https://cloud.siliconflow.cn/account/ak">控制台 → API 密钥</a>）</li>
+      <li>点「测试连接」，成功后再点「保存设置」</li>
+      <li><b>回到视频页面按 F5 刷新</b>——内容脚本只在页面加载时注入，不刷新等于没生效</li>
+    </ul>
+  </div>
+
+  <footer>
+    数据来源：FireRedASR2S 统一对比表、SURE-EVAL（arXiv 2609.39030）、Qwen3-ASR 技术报告、
+    硅基流动模型广场与价格页、阿里云百炼计费文档。价格与可用性以各家官网为准。
+  </footer>
+
+</div>
+</body>
+</html>

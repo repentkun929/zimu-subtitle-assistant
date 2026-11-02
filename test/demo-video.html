@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>字幕助手 · 本地测试页</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font: 14px/1.7 "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      background: #14161b;
+      color: #e6e9ef;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p.lead { color: #98a1b2; margin: 0 0 18px; }
+    video { width: 100%; max-width: 820px; background: #000; border-radius: 10px; display: block; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    button {
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid #3a4150;
+      background: #262a33;
+      color: #e6e9ef;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { background: #313742; }
+    button.primary { background: #2f6feb; border-color: #2f6feb; }
+    pre {
+      background: #1b1e24;
+      border: 1px solid #2c313b;
+      border-radius: 8px;
+      padding: 12px;
+      overflow: auto;
+      max-height: 320px;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .ok { color: #43d17a; }
+    .bad { color: #ff7b72; }
+    label { display: inline-flex; align-items: center; gap: 6px; color: #98a1b2; }
+    input[type="text"] { background: #14161b; color: #e6e9ef; border: 1px solid #333844; border-radius: 6px; padding: 6px 8px; min-width: 320px; }
+  </style>
+</head>
+<body>
+  <h1>字幕助手 · 本地测试页</h1>
+  <p class="lead">
+    用来验证扩展是否正常工作。默认视频是公开跨域资源，能把“采集不到声音”和“识别不准”两种情况区分开。
+  </p>
+
+  <video id="demo" controls crossorigin="anonymous"
+         src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
+
+  <div class="bar">
+    <label>视频地址：<input id="src" type="text" /></label>
+    <button id="load">加载</button>
+    <button id="diag" class="primary">运行环境自检</button>
+    <button id="clear">清空输出</button>
+  </div>
+
+  <pre id="out">点“运行环境自检”，这里会打印诊断结果。</pre>
+
+  <script type="module">
+    const out = document.getElementById('out');
+    const video = document.getElementById('demo');
+    const srcInput = document.getElementById('src');
+    srcInput.value = video.src;
+
+    const write = (text, cls = '') => {
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      line.textContent = text;
+      out.appendChild(line);
+    };
+
+    document.getElementById('clear').addEventListener('click', () => {
+      out.textContent = '';
+    });
+
+    document.getElementById('load').addEventListener('click', () => {
+      video.src = srcInput.value;
+      video.load();
+      write('已加载：' + srcInput.value);
+    });
+
+    /** 录音 1.5 秒并测量音量，用来判断 captureStream 是否真的采到了声音。 */
+    async function measure(seconds = 1.5) {
+      const stream = video.captureStream();
+      const tracks = stream.getAudioTracks();
+      if (!tracks.length) return { error: '流里没有音轨' };
+      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : undefined });
+      const parts = [];
+      recorder.addEventListener('dataavailable', (e) => e.data.size && parts.push(e.data));
+      const done = new Promise((resolve) => recorder.addEventListener('stop', resolve));
+      recorder.start();
+      await new Promise((r) => setTimeout(r, seconds * 1000));
+      recorder.stop();
+      await done;
+      tracks.forEach((t) => t.stop());
+      const blob = new Blob(parts, { type: recorder.mimeType });
+      const ctx = new AudioContext();
+      const buffer = await ctx.decodeAudioData(await blob.arrayBuffer());
+      const data = buffer.getChannelData(0);
+      let sum = 0;
+      let peak = 0;
+      for (let i = 0; i < data.length; i++) {
+        sum += data[i] * data[i];
+        peak = Math.max(peak, Math.abs(data[i]));
+      }
+      await ctx.close();
+      return { size: blob.size, rms: Math.sqrt(sum / data.length), peak, seconds: buffer.duration };
+    }
+
+    document.getElementById('diag').addEventListener('click', async () => {
+      out.textContent = '';
+      write('— 环境自检开始 —');
+
+      write('页面协议：' + location.protocol + '（安全上下文：' + window.isSecureContext + '）',
+        window.isSecureContext || location.hostname === 'localhost' ? 'ok' : 'bad');
+      write('captureStream 可用：' + (typeof video.captureStream === 'function'), typeof video.captureStream === 'function' ? 'ok' : 'bad');
+      write('MediaRecorder 可用：' + (typeof MediaRecorder !== 'undefined'), typeof MediaRecorder !== 'undefined' ? 'ok' : 'bad');
+      write('Opus 支持：' + MediaRecorder.isTypeSupported('audio/webm;codecs=opus'));
+      write('扩展是否注入：' + Boolean(globalThis.__ZIMU__ && globalThis.__ZIMU__.controller),
+        globalThis.__ZIMU__ ? 'ok' : 'bad');
+      write('识别服务配置：' + (globalThis.__ZIMU__?.controller?.settings?.baseUrl || '（读取不到，可能是扩展未加载）'));
+
+      if (video.paused) {
+        write('正在播放视频以便测量音量…');
+        try {
+          await video.play();
+        } catch (err) {
+          write('自动播放被拦截：' + err.message + '。请手动点一下视频的播放按钮后重试。', 'bad');
+          return;
+        }
+      }
+
+      try {
+        const result = await measure();
+        if (result.error) {
+          write('音量测量失败：' + result.error, 'bad');
+        } else {
+          const verdict = result.peak < 0.01 ? '几乎无声 → 采集被跨域限制，或视频本身静音' : '正常';
+          write(
+            `录音 ${result.seconds.toFixed(2)}s / ${(result.size / 1024).toFixed(0)}KB，` +
+              `RMS=${result.rms.toFixed(5)}，峰值=${result.peak.toFixed(4)} → ${verdict}`,
+            result.peak < 0.01 ? 'bad' : 'ok'
+          );
+        }
+      } catch (err) {
+        write('测量异常：' + err.message, 'bad');
+      }
+      write('— 自检结束 —');
+    });
+  </script>
+</body>
+</html>

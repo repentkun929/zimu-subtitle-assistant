@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>字幕助手 · 界面效果离线演示（第七轮）</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --surface: #171a21;
+    --surface-2: #1e222b;
+    --line: #2a2f3a;
+    --text: #e8ecf3;
+    --muted: #98a1b3;
+    --accent: #4f8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 22px 18px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.6 "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+  .sub code {
+    background: var(--surface-2); padding: 1px 5px; border-radius: 4px;
+    font-family: Consolas, monospace; font-size: 12px;
+  }
+
+  /* ---------- 假播放器 ---------- */
+  .stage {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #dfe6ef;              /* 故意用浅色课件：底色调透明后最考验可读性 */
+    box-shadow: 0 8px 30px rgba(0,0,0,.5);
+    user-select: none;
+  }
+  .slide { position: absolute; inset: 0; padding: 5% 6%; color: #26313f; }
+  .slide h2 { font-size: clamp(13px, 2.1vw, 22px); margin: 0 0 2%; font-weight: 700; }
+  .slide ul { margin: 0; padding-left: 1.2em; font-size: clamp(10px, 1.5vw, 16px); color: #3c4a5c; }
+  .slide li { margin-bottom: .5em; }
+  .slide .chart {
+    margin-top: 2.5%;
+    height: 26%;
+    border-left: 2px solid #9fb0c4;
+    border-bottom: 2px solid #9fb0c4;
+    position: relative;
+  }
+  .slide .chart i {
+    position: absolute; inset: auto 0 0 0; height: 62%;
+    border-top: 2px dashed #7d8ea3;
+  }
+  /* 播放器自己的底栏，用来对照「字幕有没有真的贴到底」 */
+  .playerbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 30px;
+    background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0));
+    display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    color: #fff; font-size: 12px;
+  }
+  .playerbar .track {
+    flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.28); position: relative;
+  }
+  .playerbar .track i {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    background: #ff3b3b; border-radius: 2px;
+  }
+  .playerbar .time { font-variant-numeric: tabular-nums; opacity: .9; }
+
+  /* ---------- 字幕（与扩展同参数） ---------- */
+  .caption {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 92%;
+    padding: 4px 14px;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 22px;
+    line-height: 1.35;
+    text-align: center;
+    white-space: pre-wrap;
+    word-break: break-word;
+    /* background / text-shadow 由 JS 按「底色」设置内联，CSS 只留兜底 */
+    background: rgba(0, 0, 0, .72);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+    opacity: 0;
+    transition: opacity .12s linear;
+    pointer-events: none;
+  }
+  .caption.visible { opacity: 1; }
+
+  /* ---------- 悬浮窗（含贴边收起） ---------- */
+  .panel {
+    position: absolute;
+    right: 12px;
+    bottom: 42px;
+    display: flex;
+    align-items: flex-end;
+    transition: transform .22s ease;
+    z-index: 5;
+  }
+  .panel.collapsed-right { transform: translateX(calc(100% - 18px)); }
+  .panel.collapsed-left  { transform: translateX(calc(-100% + 18px)); }
+  .panel.collapsed .card { display: none !important; }
+  .panel.collapsed .fab-text { display: none; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    width: 246px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.45);
+  }
+  .card .title {
+    font-size: 12px; color: var(--muted); margin-bottom: 9px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .card .title b { color: var(--text); font-size: 12.5px; }
+  .row { display: grid; grid-template-columns: 48px 1fr 44px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .row label { font-size: 12.5px; color: var(--muted); }
+  .row output { font-size: 12px; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .chk { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text); margin: 4px 0 10px; }
+  .chk input { accent-color: var(--accent); }
+  .card .hint { font-size: 11px; color: var(--muted); margin: -2px 0 10px; line-height: 1.45; }
+  .btn {
+    width: 100%; padding: 7px 10px; border-radius: 7px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
+    font-size: 13px; font-family: inherit;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .fab {
+    position: absolute; right: 0; bottom: 0;
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 13px; border-radius: 20px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text);
+    font-size: 13px; font-family: inherit; white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  }
+  .fab .dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b3b; }
+
+  /* ---------- 外部控制条 ---------- */
+  .controls {
+    margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .controls .g { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+  .controls .g span.lab { color: var(--muted); }
+  .controls input[type=range] { width: 130px; }
+  .controls output { font-variant-numeric: tabular-nums; min-width: 40px; display: inline-block; }
+  .controls .sep { width: 1px; height: 22px; background: var(--line); }
+
+  .notes { margin-top: 18px; font-size: 13px; color: var(--muted); }
+  .notes h3 { font-size: 13.5px; color: var(--text); margin: 0 0 8px; }
+  .notes ol { margin: 0; padding-left: 1.3em; }
+  .notes li { margin-bottom: 5px; }
+  .notes kbd {
+    background: var(--surface-2); border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 4px; padding: 0 5px; font-family: Consolas, monospace; font-size: 12px;
+  }
+  .tag {
+    display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px;
+    background: rgba(79,140,255,.16); color: #9dbcff; margin-left: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>字幕助手 · 四条界面改动演示 <span class="tag">第七轮</span></h1>
+  <p class="sub">
+    离线复现扩展里的渲染逻辑，用的是和源码相同的参数：
+    <code>span = clamp(end-start, 0.8, 8)</code>、<code>anchor = time &lt;= end ? start : time</code>、
+    <code>minGap = 字号 + 6</code>、<code>rgba(0,0,0,alpha)</code>、<code>translateX(calc(100% - 18px))</code>。
+    这里只是为了让你先看清效果，真正的验收还是在课程页上做（<code>docs/verify-round3.md</code> 场景 J）。
+  </p>
+
+  <div class="stage" id="stage">
+    <div class="slide">
+      <h2>2.3 欠拟合与过拟合</h2>
+      <ul>
+        <li>模型过于简单 → 训练误差与测试误差都高（欠拟合）</li>
+        <li>模型过于复杂 → 训练误差低、测试误差回升（过拟合）</li>
+        <li>正则化就是在这个权衡里控制复杂度</li>
+      </ul>
+      <div class="chart"><i></i></div>
+    </div>
+
+    <div class="caption" id="caption"></div>
+
+    <div class="playerbar">
+      <div class="track"><i id="progress"></i></div>
+      <div class="time" id="clock">0.0 / 0.0s</div>
+    </div>
+
+    <div class="panel" id="panel">
+      <div class="card" data-card>
+        <div class="title"><b>字幕助手</b><span id="state">识别中</span></div>
+
+        <div class="row">
+          <label>距底部</label>
+          <input type="range" id="bottom" min="0" max="40" step="1" value="6">
+          <output id="bottomOut">6%</output>
+        </div>
+        <div class="row">
+          <label>底色</label>
+          <input type="range" id="opacity" min="0" max="100" step="1" value="72">
+          <output id="opacityOut">72%</output>
+        </div>
+        <div class="row">
+          <label>字号</label>
+          <input type="range" id="font" min="14" max="40" step="1" value="22">
+          <output id="fontOut">22px</output>
+        </div>
+        <div class="hint">底色拖到 0 = 黑框完全消失，只剩白字（描边会自动加强，浅色课件上也能看清）。</div>
+
+        <label class="chk"><input type="checkbox" id="typewriter" checked> 逐字显示</label>
+
+        <button class="btn" id="collapse" data-act="collapse">收起面板</button>
+      </div>
+
+      <button class="fab" id="fab" data-fab>
+        <i class="dot"></i><span class="fab-text">字幕</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="g">
+      <button class="btn" id="play" style="width:auto;padding:6px 14px;">⏸ 暂停</button>
+    </div>
+    <div class="sep"></div>
+    <div class="g">
+      <span class="lab">识别延迟</span>
+      <input type="range" id="lag" min="0" max="10" step="0.5" value="3">
+      <output id="lagOut">3.0s</output>
+    </div>
+    <div class="g">
+      <label class="chk" style="margin:0;">
+        <input type="checkbox" id="preIdentified" checked> 这段已识别完（重看）
+      </label>
+    </div>
+    <div class="sep"></div>
+    <div class="g">
+      <span class="lab">倍速</span>
+      <input type="range" id="rate" min="0.5" max="2" step="0.25" value="1">
+      <output id="rateOut">1x</output>
+    </div>
+    <div class="sep"></div>
+    <div class="g">
+      <button class="btn" id="restart" style="width:auto;padding:6px 14px;">↺ 回到开头</button>
+      <button class="btn" id="collapseTop" style="width:auto;padding:6px 14px;">收起 / 展开面板</button>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h3>四条改动，逐条怎么看</h3>
+    <ol>
+      <li><b>逐字输出</b>——点 <kbd>播放</kbd>，看字幕是不是<b>一个字一个字冒出来</b>。把「逐字显示」勾掉再放一遍，就是原来那种整句蹦出来。</li>
+      <li><b>跟随音频</b>——勾上「这段已识别完（重看）」，这时字幕在句子<b>刚开始播</b>时就逐字出现，节奏和话音对齐（对应验收手册里的场景 J-1b）。</li>
+      <li><b>黑框太丑</b>——把「底色」拖到 <b>0</b>，黑框消失；课件是浅色的，看白字是否依然清楚（描边会自动加强）。</li>
+      <li><b>位置太高</b>——拖「距底部」，拖到 0 时字幕贴到画面最下、和播放器底栏同一高度。注意拖到底也不会跑出画面（下限是「字号 + 6」）。</li>
+      <li><b>悬浮窗遮挡</b>——点 <kbd>收起面板</kbd>，面板滑到右侧只留一条窄边；<b>点那条窄边能展开回来</b>。这就是解决「字幕和悬浮窗互相遮盖」的办法。</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- 设置（与扩展默认值一致） ---------------- */
+  var settings = {
+    bottomPercent: 6,
+    captionOpacity: 72,
+    fontSize: 22,
+    typewriter: true
+  };
+
+  /* ---------------- 假课程内容（时间单位：秒） ---------------- */
+  var DURATION = 36;
+  var SENTENCES = [
+    { text: '好,我们来看这个图啊,我们看这个什么是欠拟合.', start: 2.0,  end: 6.5 },
+    { text: '就是说,模型太简单了.',                        start: 6.8,  end: 9.2 },
+    { text: '模型的复杂度不够的时候,训练误差下不去.',        start: 9.6,  end: 13.6 },
+    { text: '然后呢,随着模型复杂度提高,训练误差会一直减小.',  start: 14.0, end: 18.6 },
+    { text: '但是测试误差是先降后升的,这个点就是最优点.',     start: 19.0, end: 23.8 },
+    { text: '所以我们做正则化,其实就是在控制复杂度.',         start: 24.2, end: 28.4 },
+    { text: '好,那接下来.',                                start: 28.8, end: 30.8 },
+    { text: '我们看具体的正则化方法有哪些.',                 start: 31.2, end: 35.0 }
+  ];
+
+  /* ---------------- 播放状态 ---------------- */
+  /* 默认就在播、且把这段当成「已识别完的重看」——
+     这样一打开页面就能看到「贴着话音逐字出字」的目标效果。
+     想看真实延迟下的样子，把「这段已识别完（重看）」勾掉即可。 */
+  var playing = true;
+  var mediaTime = 0;
+  var lag = 3;
+  var rate = 1;
+  var preIdentified = true;
+
+  /* ---------------- 逐字显示状态（对应 Controller 的字段） ---------------- */
+  var reveal = null;          // { full, shown, anchor, span, done, doneAtMs }
+  var retired = null;         // 已打完并清掉的那句，防止下一帧重打一遍
+  var CAPTION_LINGER_MS = 1500;
+
+  var MIN_SPAN = 0.8;
+  var MAX_SPAN = 8;
+
+  /* ---------------- DOM ---------------- */
+  var stage = document.getElementById('stage');
+  var captionEl = document.getElementById('caption');
+  var progressEl = document.getElementById('progress');
+  var clockEl = document.getElementById('clock');
+  var panel = document.getElementById('panel');
+  var stateEl = document.getElementById('state');
+  var collapsed = false;
+
+  /* ================= 逐字切片：与 subtitles.js 的 typewriterSlice 同逻辑 ================= */
+  function typewriterSlice(segment, time) {
+    var text = String((segment && segment.text) || '');
+    if (!text) { reveal = null; return { text: '', partial: false }; }
+    if (!settings.typewriter) { reveal = null; return { text: text, partial: false }; }
+
+    var start = Number(segment.start) || 0;
+    var end = Number(segment.end) || start;
+
+    if (!reveal || reveal.full !== text) {
+      reveal = {
+        full: text,
+        shown: 0,
+        /* 能赶上音频 → 锚点落在句首（字幕贴着话音走）；迟到 → 锚点落在到手那一刻 */
+        anchor: time <= end ? start : time,
+        span: Math.min(MAX_SPAN, Math.max(MIN_SPAN, end - start)),
+        done: false,
+        doneAtMs: 0
+      };
+    }
+    if (reveal.done) return { text: text, partial: false };
+
+    var progress = reveal.span > 0 ? (time - reveal.anchor) / reveal.span : 1;
+    var target = Math.min(text.length, Math.floor(progress * text.length));
+    if (target > reveal.shown) reveal.shown = target;   // 只增不减，不会缩回去
+
+    if (reveal.shown >= text.length) {
+      reveal.done = true;
+      reveal.doneAtMs = performance.now();
+      return { text: text, partial: false };
+    }
+    return { text: text.slice(0, Math.max(1, reveal.shown)), partial: true };
+  }
+
+  /* 「打完停留一会儿再消失」：只对逐字打完的句子生效 */
+  function revealFinishedLongAgo() {
+    if (!reveal || !reveal.done || !reveal.doneAtMs) return false;
+    return performance.now() - reveal.doneAtMs >= CAPTION_LINGER_MS;
+  }
+
+  /* ================= 屏幕上该显示哪一条 ================= */
+  function availability(s) {
+    // 这一段「已识别完（重看）」→ 一进句子就可用；否则要等识别回来（句尾 + 识别延迟）
+    return preIdentified ? -Infinity : (s.end + lag);
+  }
+
+  function renderFrame(time) {
+    // 暂停 → 屏幕静止，没必要继续挂着字幕
+    if (!playing) { paint(''); return; }
+
+    // ① 正在播的那一句（锚点会落在句首 → 贴着话音逐字）
+    var seg = null;
+    for (var i = 0; i < SENTENCES.length; i++) {
+      var s = SENTENCES[i];
+      if (s.start <= time && time <= s.end && availability(s) <= time) { seg = s; break; }
+    }
+    if (seg) {
+      retired = null;
+      var sl = typewriterSlice(seg, time);
+      paint(sl.text, sl.partial);
+      return;
+    }
+
+    // ② 没命中：正在打的那句优先（不被下一条截断），否则保留最近说过的一条
+    var typing = (reveal && !reveal.done) ? reveal : null;
+    var target = null;
+    if (typing) {
+      target = { text: typing.full, start: typing.anchor, end: typing.anchor + typing.span };
+    } else {
+      for (var j = 0; j < SENTENCES.length; j++) {
+        var q = SENTENCES[j];
+        if (availability(q) <= time && q.end <= time) target = q;
+      }
+    }
+
+    if (!target) { paint(''); return; }
+
+    // 这一条已经打完 + 停留够久 → 清空，等下一句
+    if (target.text === retired) { paint(''); return; }
+    if (revealFinishedLongAgo()) {
+      retired = target.text;
+      paint('');
+      return;
+    }
+
+    var held = typewriterSlice(target, time);
+    paint(held.text, held.partial);
+  }
+
+  function paint(text, isPartial) {
+    if (!text) {
+      captionEl.classList.remove('visible');
+      captionEl.textContent = '';
+      reveal = null;
+      return;
+    }
+    if (captionEl.textContent !== text) captionEl.textContent = text;
+    captionEl.classList.add('visible');
+  }
+
+  /* ================= 位置：applyCaptionPosition 同逻辑 ================= */
+  function applyCaptionPosition() {
+    var videoHeight = stage.getBoundingClientRect().height;
+    if (!videoHeight) return;
+    var minGap = settings.fontSize + 6;
+    var maxGap = Math.max(minGap, videoHeight / 3);
+    var preferred = (videoHeight * settings.bottomPercent) / 100;
+    var gap = Math.min(maxGap, Math.max(minGap, preferred));
+    captionEl.style.bottom = gap + 'px';
+  }
+
+  /* ================= 底色：applyCaptionStyle 同逻辑 ================= */
+  function applyCaptionStyle() {
+    var alpha = Math.min(100, Math.max(0, settings.captionOpacity)) / 100;
+    captionEl.style.background = alpha <= 0.001 ? 'transparent' : 'rgba(0, 0, 0, ' + alpha + ')';
+    // 底色越淡，越靠描边撑可读性 —— 阴影不能一起去掉
+    captionEl.style.textShadow = alpha <= 0.35
+      ? '0 0 3px rgba(0,0,0,0.95), 0 1px 2px rgba(0,0,0,0.95)'
+      : '0 1px 2px rgba(0,0,0,0.9)';
+  }
+
+  /* ================= 收起 / 展开：transform 贴边，不用 display:none ================= */
+  function applyCollapsed() {
+    panel.classList.toggle('collapsed', collapsed);
+    panel.classList.toggle('collapsed-right', collapsed);
+    panel.classList.toggle('collapsed-left', false);
+    document.getElementById('collapse').textContent = collapsed ? '展开面板' : '收起面板';
+    stateEl.textContent = collapsed ? '已收起' : (playing ? '识别中' : '未启动');
+  }
+
+  document.getElementById('collapse').addEventListener('click', function (e) {
+    e.stopPropagation();
+    collapsed = !collapsed;
+    applyCollapsed();
+  });
+
+  // 收起态点击必须用捕获阶段拦截，否则会顺手把卡片点开
+  panel.addEventListener('click', function (event) {
+    if (!collapsed) return;
+    event.preventDefault();
+    event.stopPropagation();
+    collapsed = false;
+    applyCollapsed();
+  }, true);
+
+  /* ================= 面板控件 ================= */
+  var bottomInput = document.getElementById('bottom');
+  var bottomOut = document.getElementById('bottomOut');
+  bottomInput.addEventListener('input', function () {
+    var n = Number(bottomInput.value);
+    settings.bottomPercent = Math.min(40, Math.max(0, n));
+    bottomOut.textContent = settings.bottomPercent + '%';
+    applyCaptionPosition();
+  });
+
+  var opacityInput = document.getElementById('opacity');
+  var opacityOut = document.getElementById('opacityOut');
+  opacityInput.addEventListener('input', function () {
+    var n = Number(opacityInput.value);
+    settings.captionOpacity = Math.min(100, Math.max(0, n));
+    opacityOut.textContent = settings.captionOpacity + '%';
+    applyCaptionStyle();
+  });
+
+  var fontInput = document.getElementById('font');
+  var fontOut = document.getElementById('fontOut');
+  fontInput.addEventListener('input', function () {
+    settings.fontSize = Number(fontInput.value);
+    fontOut.textContent = settings.fontSize + 'px';
+    captionEl.style.fontSize = settings.fontSize + 'px';
+    applyCaptionPosition();   // 字号变了底部留白要跟着重算
+  });
+
+  document.getElementById('typewriter').addEventListener('change', function (e) {
+    settings.typewriter = e.target.checked;
+    reveal = null;
+  });
+
+  /* ================= 外部控制 ================= */
+  var playBtn = document.getElementById('play');
+
+  playBtn.addEventListener('click', function () {
+    playing = !playing;
+    playBtn.textContent = playing ? '⏸ 暂停' : '▶ 播放';
+    if (playing) { reveal = null; retired = null; }
+    stateEl.textContent = collapsed ? '已收起' : (playing ? '识别中' : '未启动');
+    renderFrame(mediaTime);
+  });
+
+  document.getElementById('restart').addEventListener('click', function () {
+    mediaTime = 0;
+    reveal = null;
+    retired = null;
+    paint('');
+    updateClock();
+  });
+
+  document.getElementById('collapseTop').addEventListener('click', function () {
+    collapsed = !collapsed;
+    applyCollapsed();
+  });
+
+  var lagInput = document.getElementById('lag');
+  var lagOut = document.getElementById('lagOut');
+  lagInput.addEventListener('input', function () {
+    lag = Number(lagInput.value);
+    lagOut.textContent = lag.toFixed(1) + 's';
+    reveal = null; retired = null;
+  });
+
+  document.getElementById('preIdentified').addEventListener('change', function (e) {
+    preIdentified = e.target.checked;
+    reveal = null; retired = null;
+  });
+
+  var rateInput = document.getElementById('rate');
+  var rateOut = document.getElementById('rateOut');
+  rateInput.addEventListener('input', function () {
+    rate = Number(rateInput.value);
+    rateOut.textContent = rate + 'x';
+  });
+
+  function updateClock() {
+    progressEl.style.width = (mediaTime / DURATION * 100).toFixed(2) + '%';
+    clockEl.textContent = mediaTime.toFixed(1) + ' / ' + DURATION.toFixed(1) + 's';
+  }
+
+  /* ================= 主循环 ================= */
+  var lastTs = 0;
+  function tick(ts) {
+    var dt = lastTs ? (ts - lastTs) / 1000 : 0;
+    lastTs = ts;
+
+    if (playing) {
+      mediaTime += dt * rate;
+      if (mediaTime >= DURATION) {
+        mediaTime = 0;
+        reveal = null;
+        retired = null;
+      }
+      renderFrame(mediaTime);
+      updateClock();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ================= 初始化 ================= */
+  captionEl.style.fontSize = settings.fontSize + 'px';
+  applyCaptionStyle();
+  applyCaptionPosition();
+  applyCollapsed();
+  updateClock();
+  renderFrame(0);
+
+  window.addEventListener('resize', applyCaptionPosition);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

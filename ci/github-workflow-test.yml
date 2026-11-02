@@ -1,0 +1,29 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: 打包扩展（含语法检查与 manifest 引用校验）
+        run: node tools/build.mjs
+
+      - name: 单元测试与集成测试
+        run: node --test "test/**/*.test.mjs"
+
+      - name: 本地识别服务自检（不下载模型）
+        run: python3 tools/local-asr/server.py --selftest || echo "未安装 faster-whisper，跳过自检"

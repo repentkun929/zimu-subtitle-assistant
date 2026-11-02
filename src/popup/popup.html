@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>字幕助手设置</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --fg: #1b1f26;
+      --muted: #6b7280;
+      --line: #e2e5ea;
+      --bg: #ffffff;
+      --accent: #2f6feb;
+      --warn: #b45309;
+      --err: #c0392b;
+      --ok: #15803d;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg: #e6e9ef;
+        --muted: #9aa3b2;
+        --line: #333844;
+        --bg: #1b1e24;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 420px;
+      padding: 14px 16px 18px;
+      font: 13px/1.6 "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+    }
+    h1 { margin: 0 0 2px; font-size: 15px; }
+    .sub { color: var(--muted); margin: 0 0 12px; font-size: 12px; }
+    fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; }
+    legend { padding: 0 6px; color: var(--muted); font-size: 12px; }
+    .row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+    .row > label { flex: 0 0 96px; color: var(--muted); }
+    input[type="text"], input[type="password"], input[type="number"], select {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--fg);
+      font-size: 12px;
+    }
+    input[type="range"] { flex: 1 1 auto; }
+    .check { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+    .check input { margin: 0; }
+    .hint { color: var(--muted); font-size: 11px; margin: 4px 0 0; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    button {
+      flex: 1 1 auto;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #status { margin-top: 10px; font-size: 12px; min-height: 1.6em; white-space: pre-wrap; }
+    #status.ok { color: var(--ok); }
+    #status.err { color: var(--err); }
+    #status.warn { color: var(--warn); }
+    .value { color: var(--muted); flex: 0 0 38px; text-align: right; font-variant-numeric: tabular-nums; }
+    a { color: var(--accent); }
+    details { margin-top: 6px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+    code { background: rgba(128,128,128,0.16); padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+
+    /*
+     * 同一个页面既是工具栏弹窗（窄），也是 options_ui 的标签页（宽）。
+     * 弹窗里固定 420px 宽最合适；被当成普通标签页打开时自适应并居中，
+     * 否则右侧会拖出一大片空白，看起来像崩了。
+     */
+    @media (min-width: 560px) {
+      body { width: auto; max-width: 620px; margin: 0 auto; padding: 24px 28px 32px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>网络课程字幕助手</h1>
+  <p class="sub">配置识别服务后，在视频页面点右下角悬浮按钮即可生成字幕。</p>
+
+  <fieldset>
+    <legend>识别服务</legend>
+    <div class="row">
+      <label for="provider">供应商</label>
+      <select id="provider"></select>
+    </div>
+    <div class="row">
+      <label for="baseUrl">接口地址</label>
+      <input id="baseUrl" type="text" spellcheck="false" placeholder="https://api.example.com/v1" />
+    </div>
+    <div class="row">
+      <label for="model">模型</label>
+      <input id="model" type="text" spellcheck="false" placeholder="whisper-1" />
+    </div>
+    <div class="row">
+      <label for="apiStyle">调用协议</label>
+      <select id="apiStyle">
+        <option value="transcriptions">/audio/transcriptions（上传文件）</option>
+        <option value="chat">/chat/completions（音频放进 messages）</option>
+      </select>
+    </div>
+    <p class="hint" id="endpointHint"></p>
+    <div class="row">
+      <label for="apiKey">API Key</label>
+      <input id="apiKey" type="password" spellcheck="false" placeholder="把服务商的 Key 粘贴到这里" />
+    </div>
+    <p class="hint" id="keyHint"></p>
+    <div class="row">
+      <label for="language">识别语言</label>
+      <select id="language">
+        <option value="zh">中文</option>
+        <option value="en">英文</option>
+        <option value="ja">日文</option>
+        <option value="">自动判断</option>
+      </select>
+    </div>
+    <p class="hint" id="providerNote"></p>
+  </fieldset>
+
+  <fieldset>
+    <legend>音频来源</legend>
+    <div class="row">
+      <label for="captureMode">采集方式</label>
+      <select id="captureMode">
+        <option value="auto">自动（推荐）</option>
+        <option value="element">只用视频元素</option>
+        <option value="tab">抓取整个标签页声音</option>
+      </select>
+    </div>
+    <p class="hint" id="captureHint"></p>
+  </fieldset>
+
+  <fieldset>
+    <legend>字幕行为</legend>
+    <div class="row">
+      <label for="chunkSeconds">分块秒数</label>
+      <input id="chunkSeconds" type="range" min="4" max="30" step="1" />
+      <span class="value" id="chunkValue"></span>
+    </div>
+    <p class="hint">
+      直接决定字幕延迟：延迟 ≈ 分块秒数 + 识别耗时。默认 6 秒（约落后 7~10 秒）。
+      觉得字幕跟不上语音就调小，但请求次数和费用会增加。
+    </p>
+    <label class="check"><input id="streaming" type="checkbox" /> 流式识别（延迟更低，只对本机识别服务生效）</label>
+    <p class="hint">
+      打开后不再等一块录满，而是每 1~2 秒连续投喂；服务端把尚未定稿的音频反复解码，
+      只把「连续两次结果一致」的部分定稿发出来。延迟可从约 6 秒降到 1~2 秒，
+      代价是 CPU 占用明显上升。云端供应商按次计费（反复解码等于反复收费），
+      所以只对本机服务生效；服务端不支持时会自动退回上面的分块模式。
+    </p>
+    <div class="row">
+      <label for="streamSliceSeconds">流式切片</label>
+      <input id="streamSliceSeconds" type="range" min="1" max="5" step="0.1" />
+      <span class="value" id="sliceValue"></span>
+    </div>
+    <p class="hint">每次投喂的音频秒数。调小更灵敏但更费 CPU，调大反过来。默认 1.6 秒。</p>
+    <div class="row">
+      <label for="fontSize">字幕字号</label>
+      <input id="fontSize" type="range" min="14" max="40" step="1" />
+      <span class="value" id="fontValue"></span>
+    </div>
+    <div class="row">
+      <label for="bottomPercent">距底部</label>
+      <input id="bottomPercent" type="range" min="0" max="30" step="1" />
+      <span class="value" id="bottomValue"></span>
+    </div>
+    <p class="hint">
+      字幕条距视频底边的位置。默认 6%，就是贴在画面下方、和播放器底栏同一高度；
+      想再低就拖到 0（最低仍会留出一个字号的高度，避免大字贴边被切）。
+    </p>
+    <div class="row">
+      <label for="captionOpacity">底色浓度</label>
+      <input id="captionOpacity" type="range" min="0" max="100" step="5" />
+      <span class="value" id="opacityValue"></span>
+    </div>
+    <p class="hint">
+      字幕背后那块黑底的浓度。拖到 0 就是完全透明，只剩文字本身
+      （文字自动加描边阴影，浅色课件上也看得清）。默认 72%。
+    </p>
+    <label class="check"><input id="typewriter" type="checkbox" /> 逐字显示（打字机效果）</label>
+    <p class="hint">
+      打开后一句话会一个字一个字地冒出来，而不是整句一下全出现。
+      节奏跟着<b>这句话自己的语速</b>走：6 秒说完的句子就花 6 秒打完，
+      说完停留约 1.5 秒后消失，接着打下一句。
+    </p>
+    <div class="row">
+      <label for="panelPosition">面板位置</label>
+      <select id="panelPosition">
+        <option value="bottom-right">右下角（默认）</option>
+        <option value="top-right">右上角</option>
+        <option value="top-left">左上角</option>
+        <option value="bottom-left">左下角</option>
+      </select>
+    </div>
+    <label class="check"><input id="panelCollapsed" type="checkbox" /> 悬浮窗默认收起（贴边只留一条窄边）</label>
+    <p class="hint">
+      收起后悬浮窗会滑到视频侧边、只在边缘留一条窄条，点它即可展开——
+      和游戏助手一样。这样底部的字幕和悬浮窗就不会互相遮盖了。
+      面板上也有一个「收起」按钮，随时可以收起来。
+    </p>
+    <label class="check"><input id="splitLongLines" type="checkbox" /> 按标点把长句拆成多条短字幕</label>
+    <label class="check"><input id="showFloatingButton" type="checkbox" /> 在视频页面显示悬浮按钮</label>
+    <label class="check"><input id="enableCache" type="checkbox" /> 缓存识别结果（重看同一段不再重复计费）</label>
+    <label class="check"><input id="debug" type="checkbox" /> 输出调试日志</label>
+  </fieldset>
+
+  <div class="actions">
+    <button id="test" type="button">测试连接</button>
+    <button id="save" class="primary" type="button">保存设置</button>
+  </div>
+  <div class="actions">
+    <button id="showOverlay" type="button">在当前页面唤出面板</button>
+    <button id="grant" type="button">授权访问该服务域名</button>
+  </div>
+  <div class="actions">
+    <button id="clearCache" type="button">清除识别缓存</button>
+  </div>
+  <p class="hint">
+    「唤出面板」用于视频页面上找不到悬浮球时手动唤起。
+    若提示无法通信，说明该页面的内容脚本还没加载——刷新页面（F5）再试。
+  </p>
+
+  <div id="status"></div>
+
+  <details>
+    <summary>没有 API Key 怎么办？/ 该选哪个模型？</summary>
+    <p class="hint">
+      <b>只想尽快用上、又不想占本机资源</b>：选「硅基流动 · Qwen3-ASR-1.7B」。<br />
+      去 <a href="https://cloud.siliconflow.cn/" target="_blank" rel="noreferrer">cloud.siliconflow.cn</a>
+      注册 → 控制台「API 密钥」建一个 <code>sk-</code> 开头的 Key → 粘贴到上面的框里 → 点「测试连接」。<br />
+      硅基流动把语音识别类模型标为免费，这一档目前不花钱。<br /><br />
+      <b>不想把 Key 放进浏览器</b>：用本仓库自带的<b>本地中继</b>，Key 存在本机配置文件里，
+      扩展这边留空即可。启动命令：<code>node tools/server/relay.mjs</code>，然后供应商选「本地中继」。<br /><br />
+      <b>不想联网</b>：选「本地 Whisper」，但模型会跑在你自己电脑上，占 CPU/内存。
+    </p>
+  </details>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

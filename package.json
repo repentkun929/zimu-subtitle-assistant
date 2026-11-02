@@ -1,0 +1,17 @@
+{
+  "name": "zimu-subtitle-assistant",
+  "version": "0.2.0",
+  "private": true,
+  "description": "给任意网页里的教学视频实时生成中文字幕：本地 Whisper 或云端语音识别，字幕叠加在播放器上，可导出 SRT。",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "node tools/build.mjs --watch",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "relay": "node tools/server/relay.mjs",
+    "check": "node tools/build.mjs && node --test \"test/**/*.test.mjs\""
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "_说明": [
+    "把这个文件复制成 relay.config.json（同目录）后填入自己的信息。",
+    "relay.config.json 里会有 API Key，已经在 .gitignore 里排除，不要提交到代码仓库。",
+    "也可以不用这个文件，改用环境变量 ZIMU_UPSTREAM / ZIMU_API_KEY / ZIMU_MODEL / ZIMU_PORT 启动。"
+  ],
+  "upstream": "https://api.siliconflow.cn/v1",
+  "apiKey": "",
+  "model": "Qwen/Qwen3-ASR-1.7B",
+  "port": 8787,
+  "allowOrigin": "*",
+  "logText": false,
+  "timeoutMs": 120000
+}
