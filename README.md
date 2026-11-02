@@ -66,12 +66,19 @@
 
 ## 下载
 
+**只想用、不想碰代码**（推荐）：到 [Releases](https://github.com/repentkun929/zimu-subtitle-assistant/releases) 下载
+`zimu-subtitle-assistant-v0.2.0.zip` —— 里面是**已打包好的扩展**，解压后在
+`chrome://extensions` 开发者模式里选 `dist` 目录即可，不需要 Node。
+
+**要源码 / 想改**：
+
 ```bash
 git clone https://github.com/repentkun929/zimu-subtitle-assistant.git
 cd zimu-subtitle-assistant
+node tools/build.mjs        # 生成 dist/
 ```
 
-不想用 git：点仓库右上角 **Code → Download ZIP**，解压到任意目录即可。
+不想用 git：点仓库右上角 **Code → Download ZIP**，解压后同样先跑一次 `node tools/build.mjs`。
 
 **环境要求**
 
@@ -532,6 +539,7 @@ tools/
 demo/
   caption-preview.html    界面效果离线演示（逐字/底色/位置/收起四条，不用装扩展就能看）
 docs/                     交接、踩坑、路线图、排查、验收清单、模型选型对照
+docs/images/              界面截图（README 用）
 test/                     15 个 .test.mjs（209 项），节选：
   transcript.test.mjs     字幕算法单测（清洗/去重/断句/SRT）
   asr-protocol.test.mjs   两种调用协议、端点拼接、供应商预设完整性
