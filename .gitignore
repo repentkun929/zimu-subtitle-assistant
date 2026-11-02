@@ -19,3 +19,6 @@ desktop.ini
 
 # 本地开发笔记（不含在发布内容里）
 .workbuddy/
+
+# 发布压缩包（由 dist 生成，不入库）
+zimu-subtitle-assistant-*.zip
