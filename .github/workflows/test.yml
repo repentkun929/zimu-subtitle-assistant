@@ -23,7 +23,8 @@ jobs:
         run: node tools/build.mjs
 
       - name: 单元测试与集成测试
-        run: node --test "test/**/*.test.mjs"
+        # 用 bash 展开 glob：Node 20 自身不支持 ** 递归 glob
+        run: node --test test/*.test.mjs
 
       - name: 本地识别服务自检（不下载模型）
         run: python3 tools/local-asr/server.py --selftest || echo "未安装 faster-whisper，跳过自检"

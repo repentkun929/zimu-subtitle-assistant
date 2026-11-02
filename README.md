@@ -2,7 +2,7 @@
 
 > 给**任意网页**里的教学视频实时生成中文字幕的 Chrome / Edge 扩展 —— 本地 Whisper 或云端识别，音频不出本机也能用。
 
-![tests](https://img.shields.io/badge/tests-209%20passing-brightgreen)
+[![test](https://github.com/repentkun929/zimu-subtitle-assistant/actions/workflows/test.yml/badge.svg)](https://github.com/repentkun929/zimu-subtitle-assistant/actions/workflows/test.yml)
 ![version](https://img.shields.io/badge/version-0.2.0-blue)
 ![chrome](https://img.shields.io/badge/Chrome%2FEdge-116%2B-yellowgreen)
 ![license](https://img.shields.io/badge/license-MIT-green)
@@ -13,6 +13,10 @@
 
 **不需要麦克风、不需要下载视频、不需要字幕文件**：它读的是视频元素自己输出的音轨，
 所以戴耳机、静音放、开倍速都不影响识别。
+
+![字幕叠加效果：视频下方实时出现中文字幕，右侧是可拖拽的设置面板](docs/images/caption-preview.png)
+
+<sub>字幕叠在视频下沿，右侧面板可拖拽、可收起贴边；上图为 `demo/caption-preview.html` 的离线渲染效果，不装扩展也能看。</sub>
 
 ---
 
@@ -536,7 +540,7 @@ test/                     15 个 .test.mjs（209 项），节选：
   content-scripts.test.mjs 内容脚本加载冒烟测试
   recorder-options.test.mjs 采集参数与环境探测
   demo-video.html         浏览器里的环境自检页
-ci/github-workflow-test.yml  CI 配置（Node 20/22 打包 + 全量测试），见文末说明
+.github/workflows/test.yml  CI：Node 20/22 矩阵 → 打包 + 209 项测试 + 服务端自检
 LICENSE                   MIT
 ```
 
@@ -583,6 +587,4 @@ node tools/server/relay.mjs        # 启动本地中继
 - 改代码前请先读 [docs/handoff.md](docs/handoff.md)，跑通 `node tools/build.mjs && node --test "test/**/*.test.mjs"` 再提交。
 - 提交 issue 时请附上：浏览器版本、识别路线（A/B/C/D）、Console 里 `[字幕助手]` 开头的日志。
 - 本项目以 [MIT License](LICENSE) 发布。
-- CI 配置已备好（`ci/github-workflow-test.yml`）。GitHub 要求推送 workflow 文件时 token 带 `workflow` 权限，
-  所以它暂时以 `.disabled` 后缀入库。你的账号启用一次即可生效：`gh auth refresh -s workflow`，
-  然后 `git mv .github/workflows/test.yml.disabled .github/workflows/test.yml && git commit -m "ci: 启用 GitHub Actions" && git push`。
+- CI：[`.github/workflows/test.yml`](.github/workflows/test.yml) 在 Node 20 / 22 上跑「打包 + 全量测试 + 服务端自检」，提交即触发。
